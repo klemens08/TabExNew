@@ -34,10 +34,7 @@ public class TableDetection {
         //multiplication value has to be defined
         float multiplicationValue = 1.3f;
         if (!singleColumn) {
-            multiplicationValue = 2.0f;
-        }
-        if (metaData.pages.first().columns > 1) {
-            multiplicationValue = 2f;
+            multiplicationValue = 1.5f;
         }
         if (metaData.pages.size() == 1) {
             this.metaData.minimumSpaceGapThreshold = this.metaData.spacingTolerance * 5;
@@ -160,7 +157,7 @@ public class TableDetection {
                     } else if (line.leftColumnCritical && currentMCLeftSparseBlock.sparseBlockLines.size() > 0) {
                         currentMCLeftSparseBlock.sparseBlockLines.add(line);
                     } else {
-                        if (currentMCLeftSparseBlock.sparseBlockLines.size() > 0) {
+                        if (currentMCLeftSparseBlock.sparseBlockLines.size() > 0 && line.wordGroupsInLeftColumn.size() > 0) {
                             currentMCLeftSparseBlock = addSparseBlockToTable(currentMCLeftSparseBlock);
                         }
                     }
@@ -172,7 +169,7 @@ public class TableDetection {
                     } else if (line.rightColumnCritical && currentMCRightSparseBlock.sparseBlockLines.size() > 0) {
                         currentMCRightSparseBlock.sparseBlockLines.add(line);
                     } else {
-                        if (currentMCRightSparseBlock.sparseBlockLines.size() > 0) {
+                        if (currentMCRightSparseBlock.sparseBlockLines.size() > 0 && line.wordGroupsInRightColumn.size() > 0) {
                             currentMCRightSparseBlock = addSparseBlockToTable(currentMCRightSparseBlock);
                         }
                     }
@@ -387,10 +384,14 @@ public class TableDetection {
 
     public void reviseSparseBlocks() {
 
+        ArrayList<Table> tablesToDelete = new ArrayList<>();
+
         //delete lines from start and end of sparse block if the size difference is too high
         for (Table table : metaData.tables) {
-            trimSparseBlocks(table);
+            trimSparseBlocks(table, tablesToDelete);
         }
+
+        metaData.tables.removeAll(tablesToDelete);
 
         //split sparse blocks if line distances in between are too high
         HashMap<Table, ArrayList<Table>> splitTableDict = new HashMap<Table, ArrayList<Table>>();
@@ -408,10 +409,26 @@ public class TableDetection {
             metaData.tables.remove(tableToDelete);
         }
 
-        ArrayList<Table> tablesToDelete = new ArrayList<>();
         for (Table table : metaData.tables) {
             if (!evaluateSparseBlockByLines(table)) {
                 tablesToDelete.add(table);
+            }
+        }
+        metaData.tables.removeAll(tablesToDelete);
+
+        for (Table table : metaData.tables) {
+            if (table.tableBody.sparseBlockLines.size() == 2) {
+                if (table.tableBody.sparseBlockLines.get(0).sparsePointCount != table.tableBody.sparseBlockLines.get(1).sparsePointCount) {
+                    tablesToDelete.add(table);
+                } else if (table.tableBody.sparseBlockLines.get(0).lineHeight > table.tableBody.sparseBlockLines.get(1).lineHeight * 1.3 || table.tableBody.sparseBlockLines.get(0).lineHeight * 1.3 < table.tableBody.sparseBlockLines.get(1).lineHeight) {
+                    tablesToDelete.add(table);
+                } else if (table.tableBody.sparseBlockLines.get(0).sparsePointCount == 1 && table.tableBody.sparseBlockLines.get(1).sparsePointCount == 1)
+                {
+                    if (table.tableBody.sparseBlockLines.get(0).getWordGroupsInLine().get(0).endX > table.tableBody.sparseBlockLines.get(1).getWordGroupsInLine().get(1).startX
+                            || table.tableBody.sparseBlockLines.get(1).getWordGroupsInLine().get(0).endX > table.tableBody.sparseBlockLines.get(0).getWordGroupsInLine().get(1).startX) {
+                        tablesToDelete.add(table);
+                    }
+                }
             }
         }
         metaData.tables.removeAll(tablesToDelete);
@@ -464,13 +481,13 @@ public class TableDetection {
                 currentTable = new Table();
             }
         }
-        if (newTables.size() > 0 && currentTable.tableBody.sparseBlockLines.size() > 1) {
+        if (newTables.size() > 0 && currentTable.tableBody.sparseBlockLines.size() > 2 || (currentTable.tableBody.sparseBlockLines.size() > 1 && (currentTable.tableBody.sparseBlockLines.get(0).sparsePointCount == currentTable.tableBody.sparseBlockLines.get(0).sparsePointCount))) {
             newTables.add(currentTable);
         }
         return newTables;
     }
 
-    public void trimSparseBlocks(Table table) {
+    public void trimSparseBlocks(Table table, ArrayList<Table> tablesToDelete) {
         Float medianLineHeight = HelperFunctions.getMedianLineHeight(table.tableBody.sparseBlockLines);
         Float medianDistanceToNextLine = getMedianDistanceBetweenLines(table.tableBody.sparseBlockLines);
 
@@ -496,9 +513,9 @@ public class TableDetection {
             table.tableBody.sparseBlockLines.remove(line);
         }
 
-        if (table.tableBody.sparseBlockLines.size() < 2) {
+        if (table.tableBody.sparseBlockLines.size() < 2 || (table.tableBody.sparseBlockLines.size()) < 3 && (table.tableBody.sparseBlockLines.get(0).sparsePointCount != table.tableBody.sparseBlockLines.get(0).sparsePointCount)) {
             //delete table
-            metaData.tables.remove(table);
+            tablesToDelete.add(table);
         }
     }
 }

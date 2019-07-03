@@ -20,6 +20,7 @@ public class Page {
     boolean isMultiColumn = false;
     public Float startColumnBorder = 0.0f;
     public Float endColumnBorder = 0.0f;
+    Float centerOfPage = 0.0f;
 
     public void setHeightOfPage() {
         this.height = lastLineOfPage.lowerBound - firstLineOfPage.upperBound;

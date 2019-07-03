@@ -34,6 +34,15 @@ public class TabExHandler {
     private static String evaluationFileName = "";
     private static String evaluationCheckDataPath = "C:\\Temp\\TabEx\\CheckData.xlsx";
     private static HashMap<String, List<CheckData>> evaluationCheckData;
+    private static boolean printSuccessMessages = true;
+
+    private static int correctPagesCount = 0;
+    private static int correctDocumentsCount = 0;
+    private static int totalPagesCount = 0;
+    private static int totalDocumentsCount = 0;
+    private static int totalExpectedTableCount = 0;
+    private static int totalDetectedTableCount = 0;
+    private static int totalCorrectlyDetectedTableCount = 0;
 
     public TabExHandler(String workflow, int extractionType, int fileIndex, File[] listOfFiles, String output_path) {
         this.workflow = workflow;
@@ -74,6 +83,8 @@ public class TabExHandler {
                 wasExportOkay = successFullExtractionCount == listOfFiles.length;
             }
         }
+
+        createSummaryEvaluationLog();
         printAllFilesMetaDataDetails(allFiles);
         return wasExportOkay;
     }
@@ -134,10 +145,14 @@ public class TabExHandler {
 
         extractTablesFromPdfs(metaData);
 
+        for (Table table : metaData.tables) {
+            table.pageNumber = table.tableBody.sparseBlockLines.get(0).page;
+        }
+
         detectHeadersAndFooters(metaData);
 
         Path path = Paths.get(fileName);
-        String file = path.getFileName().toString();
+        String file = path.getFileName().toString().replace(".pdf", "");
         createEvaluationLog(metaData.tables, file);
 
         //String fileName = listOfFiles[fileIndex].getName();
@@ -185,6 +200,7 @@ public class TabExHandler {
         metaData.multiColumnPercentage = (multiColumnPageCount / pagesOfDoc) * 100;
         if (metaData.pages.size() > 1 && metaData.multiColumnPercentage > 40) {
             metaData.isMultiColumnPDF = true;
+
             ArrayList<Float> endOfLeftColumnList = new ArrayList<>();
             ArrayList<Float> startOfRightColumnList = new ArrayList<>();
             for (Page page : metaData.pages) {
@@ -194,19 +210,7 @@ public class TabExHandler {
                 if (page.startColumnBorder != 0.0f) {
                     startOfRightColumnList.add(page.startColumnBorder);
                 }
-                if (metaData.isMultiColumnPDF) {
-                    for (Line line : page.linesOfPage) {
-                        if (line.isCenterSparse) {
-                            for (WordGroup wordGroup : line.wordGroupsInLine) {
-                                if (wordGroup.endX < page.startColumnBorder) {
-                                    line.wordGroupsInLeftColumn.add(wordGroup);
-                                } else if (wordGroup.startX > page.endColumnBorder) {
-                                    line.wordGroupsInRightColumn.add(wordGroup);
-                                }
-                            }
-                        }
-                    }
-                }
+
             }
             Collections.sort(endOfLeftColumnList);
             Collections.sort(startOfRightColumnList);
@@ -214,12 +218,31 @@ public class TabExHandler {
             metaData.startColumnBorder = startOfRightColumnList.get(startOfRightColumnList.size() / 2);
             metaData.endColumnBorder = endOfLeftColumnList.get(endOfLeftColumnList.size() / 2);
 
-        }
-
-        if (metaData.isMultiColumnPDF) {
             tableDetection.getMinimumSpaceGapThresholdByMedian(false);
             tableDetection.detectSparseLines(); // possible to use MEAN, MEDIAN, OUTLIERS as parameter to overwrite default
+
+            for (Page page : metaData.pages) {
+                if (metaData.isMultiColumnPDF) {
+                    for (Line line : page.linesOfPage) {
+                        if (line.isCenterSparse) {
+                            for (WordGroup wordGroup : line.wordGroupsInLine) {
+                                if (wordGroup.endX < page.centerOfPage) {
+                                    line.wordGroupsInLeftColumn.add(wordGroup);
+                                } else if (wordGroup.startX > page.centerOfPage) {
+                                    line.wordGroupsInRightColumn.add(wordGroup);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
         }
+
+        /*if (metaData.isMultiColumnPDF) {
+            tableDetection.getMinimumSpaceGapThresholdByMedian(false);
+            tableDetection.detectSparseLines(); // possible to use MEAN, MEDIAN, OUTLIERS as parameter to overwrite default
+        }*/
 
 
         //get sparse blocks
@@ -401,6 +424,7 @@ public class TabExHandler {
         }
     }
 
+
     public static void printLineWithDetails(MetaData metaData) {
         System.out.println("\n-------------------------------\n");
 
@@ -433,7 +457,20 @@ public class TabExHandler {
                 }
                 System.out.println(wordGroups);
                 System.out.println("\n-------------------------------\n");
-
+                /*wordGroups = "";
+                for (WordGroup wordGroup : line.wordGroupsInLeftColumn) {
+                    wordGroups += wordGroup.getWordGroupString();
+                    wordGroups += " | ";
+                }
+                System.out.println(wordGroups);
+                System.out.println("\n-------------------------------\n");
+                wordGroups = "";
+                for (WordGroup wordGroup : line.wordGroupsInRightColumn) {
+                    wordGroups += wordGroup.getWordGroupString();
+                    wordGroups += " | ";
+                }
+                System.out.println(wordGroups);
+                System.out.println("\n-------------------------------\n");*/
 
             }
 
@@ -467,20 +504,41 @@ public class TabExHandler {
                 System.out.println(metaData.fileName);
             }
         }
-        System.out.println("\nMulti Column Files: " + numberOfMCFiles + " | (Correct: 7" + " | Percentage: " + (numberOfMCFiles / 7 * 100 + ")"));
-        System.out.println("Single Column Files: " + (allFiles.size() - numberOfMCFiles) + " | (Correct: 58" + " | Percentage: " + (((allFiles.size() - numberOfMCFiles) / 58) * 100) + ")");
+        System.out.println("\nMulti Column Files: " + numberOfMCFiles + " | (Correct: 8" + " | Percentage: " + (numberOfMCFiles / 8 * 100 + ")"));
+        System.out.println("Single Column Files: " + (allFiles.size() - numberOfMCFiles) + " | (Correct: 57" + " | Percentage: " + (((allFiles.size() - numberOfMCFiles) / 57) * 100) + ")");
         System.out.println("Number of Files: " + allFiles.size() + " | (Correct: 65" + " | Percentage: " + (allFiles.size() / 65 * 100) + ")");
 
     }
 
     private static void createEvaluationLog(List<Table> tables, String fileName){
+        String evaluationLogMessage = CreateEvaluationLogMessage(tables, fileName);
+        writeEvaluationLog(evaluationLogMessage);
+    }
+
+    public static void createSummaryEvaluationLog() {
+        Float pagesPercent = correctPagesCount * 100.0f / totalPagesCount;
+        Float documentsPercent = correctDocumentsCount * 100.0f / totalDocumentsCount;
+        Float precision = totalCorrectlyDetectedTableCount * 100.0f / totalDetectedTableCount;
+        Float recall = totalCorrectlyDetectedTableCount * 100.0f / totalExpectedTableCount;
+
+        String message = "\r\n-------------- |SUMMARY| --------------\r\n\r\n" +
+                "Documents:\tTotal " + totalDocumentsCount + "\tCorrect Documents " + correctDocumentsCount + "\t-> " + documentsPercent + "%\r\n" +
+                "Pages:\t\tTotal " + totalPagesCount + "\tCorrect Pages " + correctPagesCount + "\t-> " + pagesPercent + "%\r\n" +
+                "Tables:\t\tExpected " + totalExpectedTableCount + "\tDetected " + totalDetectedTableCount + "\t\tCorrectly Detected " + totalCorrectlyDetectedTableCount + "\r\n" +
+                "\r\n" +
+                "Precision:\t" + precision + "%\r\n" +
+                "Recall:\t\t" + recall + "%\r\n";
+
+        writeEvaluationLog(message);
+    }
+
+    private static void writeEvaluationLog(String message){
         String evaluationFolderPath = "C:\\temp\\TabEx\\Evaluation";
         File dir = new File(evaluationFolderPath);
         dir.mkdirs();
         try {
-            String evaluationLogMessage = CreateEvaluationLogMessage(tables, fileName);
             Path evaluationFilePath = Paths.get(evaluationFolderPath, evaluationFileName);
-            Files.write(evaluationFilePath, Arrays.asList(evaluationLogMessage), StandardCharsets.UTF_8,
+            Files.write(evaluationFilePath, Arrays.asList(message), StandardCharsets.UTF_8,
                     Files.exists(evaluationFilePath) ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
         } catch (final IOException ioe) {
             System.out.println("ERROR: Failed to save Evaluation to Log File");
@@ -490,25 +548,49 @@ public class TabExHandler {
     private static String CreateEvaluationLogMessage(List<Table> tables, String fileName) {
         List<CheckData> checkDatas = evaluationCheckData.get(fileName);
         if (checkDatas == null) {
-            checkDatas = new ArrayList<>();
+            return "File " + fileName + " not found in Validation Data Set!";
         }
-
-        String resultMessage = "----------------------------------------------------\r\n" +
-                "Validation of Table Detection of File: " + fileName + "\r\n";
-        resultMessage += tables.size() + " tables of possible " + checkDatas.size() + " tables have been detected.\r\n";
 
         int maxPageNumber = ValidationHelper.GetMaxPageNumber(checkDatas, tables);
 
+        boolean isValid = true;
+        isValid = tables.size() == checkDatas.size();
+        String validationMessages = tables.size() + " tables of possible " + checkDatas.size() + " tables have been detected.\r\n";
         for(int i = 1; i <= maxPageNumber; i++) {
             List<CheckData> checkDatasOfPage = ValidationHelper.GetCheckDataOfPage(checkDatas, i);
             List<Table> tablesOfPage = ValidationHelper.GetTablesOfPage(tables, i);
 
-            if (checkDatasOfPage.size() != tablesOfPage.size()) {
-                resultMessage += "ERROR! Page " + i + ": Detected: " + tablesOfPage.size() + " | Expected: " + checkDatas.size() + "\r\n";
+            if (checkDatasOfPage.size() <= tablesOfPage.size()) {
+                totalCorrectlyDetectedTableCount += checkDatasOfPage.size();
             } else {
-                resultMessage += "Page " + i + ": Correct Number of Tables Detected\r\n";
+                totalCorrectlyDetectedTableCount += tablesOfPage.size();
             }
+
+            if (checkDatasOfPage.size() != tablesOfPage.size()) {
+                isValid = false;
+                validationMessages += "ERROR! Page " + i + ": Detected: " + tablesOfPage.size() + " | Expected: " + checkDatasOfPage.size() + "\r\n";
+            } else if (checkDatasOfPage.size() > 0) {
+                correctPagesCount++;
+                validationMessages += "Page " + i + ": Correct Number of Tables Detected (" + tablesOfPage.size() + ")\r\n";
+            }
+            totalPagesCount++;
         }
+
+        if (!printSuccessMessages && isValid) {
+            return "";
+        }
+
+        if (isValid) {
+            correctDocumentsCount++;
+        }
+        totalDocumentsCount++;
+        totalExpectedTableCount += checkDatas.size();
+        totalDetectedTableCount += tables.size();
+
+        String resultMessage = "\r\n--------------" + (isValid ? " |SUCCESS| " : " |!ERROR!| ") + "--------------\r\n\r\n" +
+                "Validation of Table Detection of File: " + fileName + "\r\n";
+
+        resultMessage += validationMessages;
 
         return resultMessage;
     }

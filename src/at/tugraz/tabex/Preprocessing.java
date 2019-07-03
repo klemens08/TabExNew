@@ -115,6 +115,8 @@ public class Preprocessing extends PDFTextStripper {
 
         Float centerOfPage = rightBoundaryOfPage - ((rightBoundaryOfPage - leftBoundaryOfPage) / 2);
 
+        page.centerOfPage = centerOfPage;
+
         ArrayList<Float> leftColumnRightBoundaries = new ArrayList<>();
         ArrayList<Float> rightColumnLeftBoundaries = new ArrayList<>();
 
@@ -136,7 +138,7 @@ public class Preprocessing extends PDFTextStripper {
             }
 
             //check if the end of the line is before the center  || or the start of the line is after the center and inside a certain range
-            if (!centerSparseLines.contains(line) && (line.getEndX() < centerOfPage || (line.getStartX() > centerOfPage && line.getStartX() < centerOfPage * 1.1))) {
+            if (!centerSparseLines.contains(line) && (line.getEndX() < centerOfPage || (line.getStartX() > centerOfPage && line.getStartX() < centerOfPage * 1.3))) {
                 line.isCenterSparse = true;
                 centerSparseLines.add(line);
                 if (line.getEndX() < centerOfPage) {
@@ -533,7 +535,7 @@ public class Preprocessing extends PDFTextStripper {
 
             //check if the distance between the end of the preceeding char and the beginning of the following one is bigger than the spacing tolerance (average space size)
             if (lastLetterWasEmptySpace || currentLetter.x - lastLetter.endX > (this.metaData.spacingTolerance * 1.3)
-                    || (lastLetter.lowerBound < currentLetter.upperBound) || (currentWord.upperBound > currentLetter.lowerBound)) {
+                    || (lastLetter.lowerBound < currentLetter.upperBound) || (currentWord.upperBound > currentLetter.lowerBound) || currentLetter.x < lastLetter.x) {
                 if (currentWord.lettersOfWord.size() != 0) {
                     words.add(currentWord);
                 }
