@@ -1,11 +1,9 @@
 package at.tugraz.tabex;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static at.tugraz.tabex.HelperFunctions.getMedianDistanceBetweenLines;
 
@@ -333,6 +331,7 @@ public class TableDetection {
             add("\\u25E6");
             add("\\u2043");
             add("\\u2219");
+            add("\\u2212");
             add("\\u2012");
             add("\\u2013");
             add("\\u25CB");
@@ -346,7 +345,7 @@ public class TableDetection {
 
         // 1) b) 1. a. (a & a.isNextSparse) 1:
         //TODO: pattern for (1) (2) [1] [2]
-        Pattern pattern = Pattern.compile("^[^\\(][\\w]{0,1}[\\)\\.\\:][^\\d^\\w]");
+        Pattern pattern = Pattern.compile("^([^\\(\\s]{1,3}[\\)\\.\\:]){1,5}$");
         Pattern pattern2 = Pattern.compile("^\\[[0-9]{1}\\]");
         Pattern pattern3 = Pattern.compile("^\\[[0-9]{2}\\]");
         Pattern pattern4 = Pattern.compile("^\\[[0-9]{3}\\]");
@@ -416,14 +415,14 @@ public class TableDetection {
         }
         metaData.tables.removeAll(tablesToDelete);
 
+        //delete table if: not the same sparse point count, not similiar line height, 1 sparse point that dont overlap
         for (Table table : metaData.tables) {
             if (table.tableBody.sparseBlockLines.size() == 2) {
                 if (table.tableBody.sparseBlockLines.get(0).sparsePointCount != table.tableBody.sparseBlockLines.get(1).sparsePointCount) {
                     tablesToDelete.add(table);
                 } else if (table.tableBody.sparseBlockLines.get(0).lineHeight > table.tableBody.sparseBlockLines.get(1).lineHeight * 1.3 || table.tableBody.sparseBlockLines.get(0).lineHeight * 1.3 < table.tableBody.sparseBlockLines.get(1).lineHeight) {
                     tablesToDelete.add(table);
-                } else if (table.tableBody.sparseBlockLines.get(0).sparsePointCount == 1 && table.tableBody.sparseBlockLines.get(1).sparsePointCount == 1)
-                {
+                } else if (table.tableBody.sparseBlockLines.get(0).sparsePointCount == 1 && table.tableBody.sparseBlockLines.get(1).sparsePointCount == 1) {
                     if (table.tableBody.sparseBlockLines.get(0).getWordGroupsInLine().get(0).endX > table.tableBody.sparseBlockLines.get(1).getWordGroupsInLine().get(1).startX
                             || table.tableBody.sparseBlockLines.get(1).getWordGroupsInLine().get(0).endX > table.tableBody.sparseBlockLines.get(0).getWordGroupsInLine().get(1).startX) {
                         tablesToDelete.add(table);
@@ -433,7 +432,57 @@ public class TableDetection {
         }
         metaData.tables.removeAll(tablesToDelete);
 
+        /*//check if at least 50% of table lines have same sparse point count
+        for (Table table : metaData.tables) {
+            HashMap<Integer, Integer> sparsePointsOfTable = new HashMap<>();
+            for (Line line : table.tableBody.sparseBlockLines) {
+                if(line.isCritical){
+                    continue;
+                }
+                if (sparsePointsOfTable.containsKey(line.sparsePointCount)) {
+                    sparsePointsOfTable.put(line.sparsePointCount, sparsePointsOfTable.get(line.sparsePointCount) + 1);
+                } else {
+                    sparsePointsOfTable.put(line.sparsePointCount, 1);
+                }
+            }
+            boolean tableToDelete = true;
+            List<Line> sparseLinesOfTable = table.tableBody.sparseBlockLines.stream().filter(l -> l.isCritical == false).collect(Collectors.toList());
+            for (Iterator it = sparsePointsOfTable.keySet().iterator(); it.hasNext(); ) {
+                Object key = it.next();
+                Integer value = sparsePointsOfTable.get(key);
+                if (value >= (sparseLinesOfTable.size() / 2.0f)) {
+                    tableToDelete = false;
+                    break;
+                }
+            }
+            if (tableToDelete) {
+                tablesToDelete.add(table);
+            }
+        }
+        metaData.tables.removeAll(tablesToDelete);*/
 
+        //if 2 line table does not full overlap for every sparse area
+        for (Table table : metaData.tables) {
+            if (table.tableBody.sparseBlockLines.size() == 2) {
+                if (!fullOverlapOfSparseAreas(table.tableBody.sparseBlockLines.get(0), table.tableBody.sparseBlockLines.get(1))) {
+                    tablesToDelete.add(table);
+                }
+            }
+        }
+        metaData.tables.removeAll(tablesToDelete);
+
+    }
+
+    private boolean fullOverlapOfSparseAreas(Line firstLine, Line secondLine) {
+
+        int count = 0;
+        for(WordGroup wordGroupFirstLine : firstLine.wordGroupsInLine){
+            if(wordGroupFirstLine.startX > secondLine.wordGroupsInLine.get(count).endX || wordGroupFirstLine.endX < secondLine.wordGroupsInLine.get(count).startX){
+                return false;
+            }
+            count++;
+        }
+        return true;
     }
 
     private boolean evaluateSparseBlockByLines(Table table) {

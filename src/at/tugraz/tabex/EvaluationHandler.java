@@ -47,6 +47,10 @@ public class EvaluationHandler {
     private int totalMultiColumnDetectedTableCount = 0;
     private int totalMultiColumnCorrectlyDetectedTableCount = 0;
 
+    private int totalNormalExpectedTableCount = 0;
+    private int totalNormalDetectedTableCount = 0;
+    private int totalNormalCorrectlyDetectedTableCount = 0;
+
     public EvaluationHandler(boolean printSuccessMessages, boolean printSummaryMessages) {
         this.printSuccessMessages = printSuccessMessages;
         this.printSummaryMessages = printSummaryMessages;
@@ -100,13 +104,13 @@ public class EvaluationHandler {
                 } else if (cellIndex == 6) { // format of Table
                     currentCheckData.orientation = Orientation.values()[(int) cell.getNumericCellValue()];
                 } else if (cellIndex == 7) { // format of Table
-                    currentCheckData.isMultiColumn = Boolean.parseBoolean(Integer.toString((int) cell.getNumericCellValue()));
-                } else if (cellIndex == 7) { // format of Table
-                    currentCheckData.isOnePage = Boolean.parseBoolean(Integer.toString((int) cell.getNumericCellValue()));
-                } else if (cellIndex == 7) { // format of Table
-                    currentCheckData.hasHeader = Boolean.parseBoolean(Integer.toString((int) cell.getNumericCellValue()));
-                } else if (cellIndex == 7) { // format of Table
-                    currentCheckData.hasFooter = Boolean.parseBoolean(Integer.toString((int) cell.getNumericCellValue()));
+                    currentCheckData.isMultiColumn = (int) cell.getNumericCellValue() == 1;
+                } else if (cellIndex == 8) { // format of Table
+                    currentCheckData.isOnePage = (int) cell.getNumericCellValue() == 1;;
+                } else if (cellIndex == 9) { // format of Table
+                    currentCheckData.hasHeader = (int) cell.getNumericCellValue() == 1;;
+                } else if (cellIndex == 10) { // format of Table
+                    currentCheckData.hasFooter = (int) cell.getNumericCellValue() == 1;;
                 }
                 cellIndex++;
             }
@@ -114,8 +118,8 @@ public class EvaluationHandler {
         return result;
     }
 
-    public void createEvaluationLog(List<Table> tables, String fileName){
-        String evaluationLogMessage = CreateEvaluationLogMessage(tables, fileName);
+    public void createEvaluationLog(List<Table> tables, String fileName, int fileIndex){
+        String evaluationLogMessage = CreateEvaluationLogMessage(tables, fileName, fileIndex);
         writeEvaluationLog(evaluationLogMessage);
     }
 
@@ -127,17 +131,21 @@ public class EvaluationHandler {
                 "Documents:\tTotal " + totalDocumentsCount + "\tCorrect Documents " + correctDocumentsCount + "\t-> " + documentsPercent + "%\r\n" +
                 "Pages:\t\tTotal " + totalPagesCount + "\tCorrect Pages " + correctPagesCount + "\t-> " + pagesPercent + "%\r\n" +
                 createTableStatistics(totalExpectedTableCount, totalDetectedTableCount, totalCorrectlyDetectedTableCount) +
-                "\r\n" +
-                "Single Page Documents:\r\n" +
-                createTableStatistics(totalSinglePageExpectedTableCount, totalSinglePageDetectedTableCount, totalSinglePageCorrectlyDetectedTableCount)
-                ;
+                "\nTables in Normal Documents:\r\n" +
+                createTableStatistics(totalNormalExpectedTableCount, totalNormalDetectedTableCount, totalNormalCorrectlyDetectedTableCount) +
+                "\nTables in Single Page Documents:\r\n" +
+                createTableStatistics(totalSinglePageExpectedTableCount, totalSinglePageDetectedTableCount, totalSinglePageCorrectlyDetectedTableCount) +
+                "\nTables in MultiColumn Documents:\r\n" +
+                createTableStatistics(totalMultiColumnExpectedTableCount, totalMultiColumnDetectedTableCount, totalMultiColumnCorrectlyDetectedTableCount) +
+                "\nTables in Landscape Documents:\r\n" +
+                createTableStatistics(totalLandscapeExpectedTableCount, totalLandscapeDetectedTableCount, totalLandscapeCorrectlyDetectedTableCount);
 
         writeEvaluationLog(message);
     }
 
     private String createTableStatistics(int expectedTableAmount, int detectedTableAmount, int correctlyDetectedTableAmount) {
-        Float precision = correctlyDetectedTableAmount * 100.0f / detectedTableAmount;
-        Float recall = correctlyDetectedTableAmount * 100.0f / expectedTableAmount;
+        Float precision = detectedTableAmount == 0 ? 0 : correctlyDetectedTableAmount * 100.0f / detectedTableAmount;
+        Float recall = expectedTableAmount == 0 ? 0 : correctlyDetectedTableAmount * 100.0f / expectedTableAmount;
 
         return "Tables:\t\tExpected " + expectedTableAmount + "\tDetected " + detectedTableAmount + "\t\tCorrectly Detected " + correctlyDetectedTableAmount + "\r\n" +
                 "\r\n" +
@@ -158,10 +166,10 @@ public class EvaluationHandler {
         }
     }
 
-    private String CreateEvaluationLogMessage(List<Table> tables, String fileName) {
+    private String CreateEvaluationLogMessage(List<Table> tables, String fileName, int fileIndex) {
         List<CheckData> checkDatas = evaluationCheckData.get(fileName);
         if (checkDatas == null) {
-            return "File " + fileName + " not found in Validation Data Set!\r\n";
+            return "File " + fileName + " [" + fileIndex + "] not found in Validation Data Set!\r\n";
         }
 
         int maxPageNumber = ValidationHelper.GetMaxPageNumber(checkDatas, tables);
@@ -175,25 +183,29 @@ public class EvaluationHandler {
 
             if (checkDatasOfPage.size() <= tablesOfPage.size()) {
                 totalCorrectlyDetectedTableCount += checkDatasOfPage.size();
-                if (checkDatasOfPage.get(0).isOnePage) {
+                if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isOnePage) {
                     totalSinglePageCorrectlyDetectedTableCount += checkDatasOfPage.size();
                 }
-                if (checkDatasOfPage.get(0).isMultiColumn) {
+                else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isMultiColumn) {
                     totalMultiColumnCorrectlyDetectedTableCount += checkDatasOfPage.size();
                 }
-                if (checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
+                else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
                     totalLandscapeCorrectlyDetectedTableCount += checkDatasOfPage.size();
+                } else {
+                    totalNormalCorrectlyDetectedTableCount += checkDatasOfPage.size();
                 }
             } else {
                 totalCorrectlyDetectedTableCount += tablesOfPage.size();
-                if (checkDatasOfPage.get(0).isOnePage) {
+                if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isOnePage) {
                     totalSinglePageCorrectlyDetectedTableCount += tablesOfPage.size();
                 }
-                if (checkDatasOfPage.get(0).isMultiColumn) {
+                else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isMultiColumn) {
                     totalMultiColumnCorrectlyDetectedTableCount += tablesOfPage.size();
                 }
-                if (checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
+                else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
                     totalLandscapeCorrectlyDetectedTableCount += tablesOfPage.size();
+                } else {
+                    totalNormalCorrectlyDetectedTableCount += tablesOfPage.size();
                 }
             }
 
@@ -206,14 +218,19 @@ public class EvaluationHandler {
             }
             totalPagesCount++;
 
-            if (checkDatas.get(0).isMultiColumn) {
+            if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isMultiColumn) {
                 totalMultiColumnExpectedTableCount += checkDatasOfPage.size();
                 totalMultiColumnDetectedTableCount += tablesOfPage.size();
             }
-
-            if (checkDatas.get(0).orientation == Orientation.Landscape) {
+            else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
                 totalLandscapeExpectedTableCount += checkDatasOfPage.size();
                 totalLandscapeDetectedTableCount += tablesOfPage.size();
+            } else if (checkDatasOfPage.size() > 0 && checkDatasOfPage.get(0).isOnePage) {
+                totalSinglePageExpectedTableCount += checkDatasOfPage.size();
+                totalSinglePageDetectedTableCount += tablesOfPage.size();
+            } else {
+                totalNormalExpectedTableCount += checkDatasOfPage.size();
+                totalNormalDetectedTableCount += tablesOfPage.size();
             }
         }
 
@@ -234,7 +251,7 @@ public class EvaluationHandler {
         }
 
         String resultMessage = "\r\n--------------" + (isValid ? " |SUCCESS| " : " |!ERROR!| ") + "--------------\r\n\r\n" +
-                "Validation of Table Detection of File: " + fileName + "\r\n";
+                "Validation of Table Detection of File: " + fileName + " [" + fileIndex + "]\r\n";
 
         resultMessage += validationMessages;
 

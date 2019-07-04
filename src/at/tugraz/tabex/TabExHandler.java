@@ -74,7 +74,7 @@ public class TabExHandler {
         // just to extract one single file
         String filePath = listOfFiles[fileIndex].getPath();
         String fileName = Paths.get(this.output_path, listOfFiles[fileIndex].getName()).toString();
-        boolean wasExtractionSuccessful = ExecuteNativePdfTableExtraction(filePath, fileName);
+        boolean wasExtractionSuccessful = ExecuteNativePdfTableExtraction(filePath, fileName, fileIndex);
         return wasExtractionSuccessful;
     }
 
@@ -92,7 +92,7 @@ public class TabExHandler {
         for (int fileIndex = 0; fileIndex < listOfFiles.length; fileIndex++) {
             String filePath = listOfFiles[fileIndex].getPath();
             String fileName = Paths.get(output_path, listOfFiles[fileIndex].getName()).toString();
-            boolean wasExtractionSuccessful = ExecuteNativePdfTableExtraction(filePath, fileName);
+            boolean wasExtractionSuccessful = ExecuteNativePdfTableExtraction(filePath, fileName, fileIndex);
             if (wasExtractionSuccessful) {
                 successFullExtractionCount++;
             }
@@ -114,7 +114,7 @@ public class TabExHandler {
         return successFullExtractionCount;
     }
 
-    public boolean ExecuteNativePdfTableExtraction(String filePath, String fileName) throws Exception {
+    public boolean ExecuteNativePdfTableExtraction(String filePath, String fileName, int index) throws Exception {
 
         MetaData metaData = new MetaData();
         allFiles.add(metaData);
@@ -134,7 +134,7 @@ public class TabExHandler {
 
         Path path = Paths.get(fileName);
         String file = path.getFileName().toString().replace(".pdf", "");
-        evaluationHandler.createEvaluationLog(metaData.tables, file);
+        evaluationHandler.createEvaluationLog(metaData.tables, file, index);
 
         //String fileName = listOfFiles[fileIndex].getName();
         fileName = fileName.replace("pdf", "xls");
