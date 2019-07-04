@@ -1,9 +1,11 @@
 package at.tugraz.tabex;
 
+import com.sun.org.apache.xpath.internal.operations.Or;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import sun.plugin.liveconnect.OriginNotAllowedException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,9 +30,22 @@ public class EvaluationHandler {
     private int correctDocumentsCount = 0;
     private int totalPagesCount = 0;
     private int totalDocumentsCount = 0;
+
     private int totalExpectedTableCount = 0;
     private int totalDetectedTableCount = 0;
     private int totalCorrectlyDetectedTableCount = 0;
+
+    private int totalSinglePageExpectedTableCount = 0;
+    private int totalSinglePageDetectedTableCount = 0;
+    private int totalSinglePageCorrectlyDetectedTableCount = 0;
+
+    private int totalLandscapeExpectedTableCount = 0;
+    private int totalLandscapeDetectedTableCount = 0;
+    private int totalLandscapeCorrectlyDetectedTableCount = 0;
+
+    private int totalMultiColumnExpectedTableCount = 0;
+    private int totalMultiColumnDetectedTableCount = 0;
+    private int totalMultiColumnCorrectlyDetectedTableCount = 0;
 
     public EvaluationHandler(boolean printSuccessMessages, boolean printSummaryMessages) {
         this.printSuccessMessages = printSuccessMessages;
@@ -107,18 +122,27 @@ public class EvaluationHandler {
     public void createSummaryEvaluationLog() {
         Float pagesPercent = correctPagesCount * 100.0f / totalPagesCount;
         Float documentsPercent = correctDocumentsCount * 100.0f / totalDocumentsCount;
-        Float precision = totalCorrectlyDetectedTableCount * 100.0f / totalDetectedTableCount;
-        Float recall = totalCorrectlyDetectedTableCount * 100.0f / totalExpectedTableCount;
 
         String message = "\r\n-------------- |SUMMARY| --------------\r\n\r\n" +
                 "Documents:\tTotal " + totalDocumentsCount + "\tCorrect Documents " + correctDocumentsCount + "\t-> " + documentsPercent + "%\r\n" +
                 "Pages:\t\tTotal " + totalPagesCount + "\tCorrect Pages " + correctPagesCount + "\t-> " + pagesPercent + "%\r\n" +
-                "Tables:\t\tExpected " + totalExpectedTableCount + "\tDetected " + totalDetectedTableCount + "\t\tCorrectly Detected " + totalCorrectlyDetectedTableCount + "\r\n" +
+                createTableStatistics(totalExpectedTableCount, totalDetectedTableCount, totalCorrectlyDetectedTableCount) +
+                "\r\n" +
+                "Single Page Documents:\r\n" +
+                createTableStatistics(totalSinglePageExpectedTableCount, totalSinglePageDetectedTableCount, totalSinglePageCorrectlyDetectedTableCount)
+                ;
+
+        writeEvaluationLog(message);
+    }
+
+    private String createTableStatistics(int expectedTableAmount, int detectedTableAmount, int correctlyDetectedTableAmount) {
+        Float precision = correctlyDetectedTableAmount * 100.0f / detectedTableAmount;
+        Float recall = correctlyDetectedTableAmount * 100.0f / expectedTableAmount;
+
+        return "Tables:\t\tExpected " + expectedTableAmount + "\tDetected " + detectedTableAmount + "\t\tCorrectly Detected " + correctlyDetectedTableAmount + "\r\n" +
                 "\r\n" +
                 "Precision:\t" + precision + "%\r\n" +
                 "Recall:\t\t" + recall + "%\r\n";
-
-        writeEvaluationLog(message);
     }
 
     private void writeEvaluationLog(String message){
@@ -151,8 +175,26 @@ public class EvaluationHandler {
 
             if (checkDatasOfPage.size() <= tablesOfPage.size()) {
                 totalCorrectlyDetectedTableCount += checkDatasOfPage.size();
+                if (checkDatasOfPage.get(0).isOnePage) {
+                    totalSinglePageCorrectlyDetectedTableCount += checkDatasOfPage.size();
+                }
+                if (checkDatasOfPage.get(0).isMultiColumn) {
+                    totalMultiColumnCorrectlyDetectedTableCount += checkDatasOfPage.size();
+                }
+                if (checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
+                    totalLandscapeCorrectlyDetectedTableCount += checkDatasOfPage.size();
+                }
             } else {
                 totalCorrectlyDetectedTableCount += tablesOfPage.size();
+                if (checkDatasOfPage.get(0).isOnePage) {
+                    totalSinglePageCorrectlyDetectedTableCount += tablesOfPage.size();
+                }
+                if (checkDatasOfPage.get(0).isMultiColumn) {
+                    totalMultiColumnCorrectlyDetectedTableCount += tablesOfPage.size();
+                }
+                if (checkDatasOfPage.get(0).orientation == Orientation.Landscape) {
+                    totalLandscapeCorrectlyDetectedTableCount += tablesOfPage.size();
+                }
             }
 
             if (checkDatasOfPage.size() != tablesOfPage.size()) {
@@ -163,6 +205,16 @@ public class EvaluationHandler {
                 validationMessages += "Page " + i + ": Correct Number of Tables Detected (" + tablesOfPage.size() + ")\r\n";
             }
             totalPagesCount++;
+
+            if (checkDatas.get(0).isMultiColumn) {
+                totalMultiColumnExpectedTableCount += checkDatasOfPage.size();
+                totalMultiColumnDetectedTableCount += tablesOfPage.size();
+            }
+
+            if (checkDatas.get(0).orientation == Orientation.Landscape) {
+                totalLandscapeExpectedTableCount += checkDatasOfPage.size();
+                totalLandscapeDetectedTableCount += tablesOfPage.size();
+            }
         }
 
         if (!printSuccessMessages && isValid) {
@@ -175,6 +227,11 @@ public class EvaluationHandler {
         totalDocumentsCount++;
         totalExpectedTableCount += checkDatas.size();
         totalDetectedTableCount += tables.size();
+
+        if (checkDatas.get(0).isOnePage) {
+            totalSinglePageExpectedTableCount += checkDatas.size();
+            totalSinglePageDetectedTableCount += tables.size();
+        }
 
         String resultMessage = "\r\n--------------" + (isValid ? " |SUCCESS| " : " |!ERROR!| ") + "--------------\r\n\r\n" +
                 "Validation of Table Detection of File: " + fileName + "\r\n";
