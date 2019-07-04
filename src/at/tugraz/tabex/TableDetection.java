@@ -36,10 +36,10 @@ public class TableDetection {
         if (!singleColumn) {
             multiplicationValue = 1.5f;
         }
-        if (metaData.pages.size() == 1) {
+        /*if (metaData.pages.size() == 1) {
             this.metaData.minimumSpaceGapThreshold = this.metaData.spacingTolerance * 5;
             return;
-        }
+        }*/
 
         this.metaData.minimumSpaceGapThreshold = median * multiplicationValue;
 
@@ -119,7 +119,7 @@ public class TableDetection {
 
                 line.setWordGroupsInLine();
 
-                if (!line.isCenterSparse) {
+                if (!line.isCenterSparse || !metaData.isMultiColumnPDF) {
                     if (!line.isSparse && line.getWidth() < (metaData.medianWidthOfLines / 1.5)) {
                         line.isCritical = true;
                     }
@@ -346,7 +346,7 @@ public class TableDetection {
 
         // 1) b) 1. a. (a & a.isNextSparse) 1:
         //TODO: pattern for (1) (2) [1] [2]
-        Pattern pattern = Pattern.compile("^[^\\(][\\w]{0,1}[\\)\\.\\:]");
+        Pattern pattern = Pattern.compile("^[^\\(][\\w]{0,1}[\\)\\.\\:][^\\d^\\w]");
         Pattern pattern2 = Pattern.compile("^\\[[0-9]{1}\\]");
         Pattern pattern3 = Pattern.compile("^\\[[0-9]{2}\\]");
         Pattern pattern4 = Pattern.compile("^\\[[0-9]{3}\\]");
