@@ -60,7 +60,7 @@ public class EvaluationHandler {
         try {
             evaluationCheckData = getEvaluationCheckData(evaluationCheckDataPath);
         } catch (IOException ex) {
-            System.out.println("Error while reading check data file.");
+            //System.out.println("Error while reading check data file.");
             evaluationCheckData = new HashMap<>();
         }
     }
@@ -84,7 +84,7 @@ public class EvaluationHandler {
             int cellIndex = 0;
             while (cellIterator.hasNext()) {
                 Cell cell = cellIterator.next();
-                System.out.print(cell.toString() + ";\r\n");
+                //System.out.print(cell.toString() + ";\r\n");
                 if (cellIndex == 0) { // fileName
                     if (!result.containsKey(cell.getStringCellValue())) {
                         result.put(cell.getStringCellValue(), new ArrayList<CheckData>());
@@ -154,7 +154,8 @@ public class EvaluationHandler {
     }
 
     private void writeEvaluationLog(String message){
-        String evaluationFolderPath = "C:\\temp\\TabEx\\Evaluation";
+        return;
+        /*String evaluationFolderPath = "C:\\temp\\TabEx\\Evaluation";
         File dir = new File(evaluationFolderPath);
         dir.mkdirs();
         try {
@@ -163,7 +164,7 @@ public class EvaluationHandler {
                     Files.exists(evaluationFilePath) ? StandardOpenOption.APPEND : StandardOpenOption.CREATE);
         } catch (final IOException ioe) {
             System.out.println("ERROR: Failed to save Evaluation to Log File");
-        }
+        }*/
     }
 
     private String CreateEvaluationLogMessage(List<Table> tables, String fileName, int fileIndex) {

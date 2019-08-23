@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 public class Page {
     public CustomList<Letter> letters = new CustomList<>();
+    public boolean isLandScape;
     int pageNumber;
     Line firstLineOfPage;
     Line lastLineOfPage;

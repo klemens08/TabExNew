@@ -12,14 +12,21 @@ public class WordGroup {
     public WordGroup next = null;
 
 
-    public String getWordGroupString(){
+    public String getWordGroupString() {
         String wordGroupString = "";
-        for(Word word : this.words){
+        for (Word word : this.words) {
             wordGroupString += " " + word.getWordString();
         }
         //System.out.println(wordGroupString);
         return wordGroupString;
     }
 
+    Float getDistanceToNextWordGroup() {
 
+        if (this.next == null) {
+            return 0.0f;
+        }
+
+        return this.words.get(this.words.size() - 1).distanceToNextWord;
+    }
 }

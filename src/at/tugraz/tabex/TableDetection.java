@@ -88,7 +88,7 @@ public class TableDetection {
                 }
 
                 //get Space Gap of current and last Word
-                line.setSparsePointCount(this.metaData.minimumSpaceGapThreshold);
+                line.setSparsePointCount(this.metaData.minimumSpaceGapThreshold, metaData);
 
                 if (metaData.isMultiColumnPDF) {
                     if (line.isCenterSparse) {
@@ -114,8 +114,8 @@ public class TableDetection {
                         }
                     }
                 }
-
-                line.setWordGroupsInLine();
+                //test 19.08
+                //line.setWordGroupsInLine();
 
                 if (!line.isCenterSparse || !metaData.isMultiColumnPDF) {
                     if (!line.isSparse && line.getWidth() < (metaData.medianWidthOfLines / 1.5)) {
@@ -146,6 +146,12 @@ public class TableDetection {
 
                     //if normal sparse block was filled
                     currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
+
+                    if(line.leftColumnSparse && line.rightColumnSparse){
+                        if(currentMCLeftSparseBlock.sparseBlockLines.size() == 0 && currentMCLeftSparseBlock.sparseBlockLines.size() == 0){
+
+                        }
+                    }
 
                     if (line.leftColumnSparse) {
                         currentMCLeftSparseBlock.sparseBlockLines.add(line);
@@ -179,20 +185,7 @@ public class TableDetection {
                         currentMCRightSparseBlock = addSparseBlockToTable(currentMCRightSparseBlock);
 
                     }
-
-                    //single column line
-                    if (line.isSparse && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage && line.previous != null) {
-                        currentSparseBlock.sparseBlockLines.add(line);
-                        if (line.sparsePointCount > currentSparseBlock.mostSparseFields) {
-                            currentSparseBlock.mostSparseFields = line.sparsePointCount;
-                        }
-                    } else if (line.isCritical && currentSparseBlock.sparseBlockLines.size() > 0 && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage) {
-                        currentSparseBlock.sparseBlockLines.add(line);
-                    } else if (line.isCritical && (line.next != null && line.next.isSparse && line.lineHeight == line.next.lineHeight) && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage) {
-                        currentSparseBlock.sparseBlockLines.add(line);
-                    } else {
-                        currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
-                    }
+                    handleSingleColumnLineSparseBlock(line, currentSparseBlock);
                 }
             }
             //if left or right mc sparse block was filled
@@ -201,6 +194,22 @@ public class TableDetection {
                 currentMCRightSparseBlock = addSparseBlockToTable(currentMCRightSparseBlock);
 
             }
+            currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
+        }
+    }
+
+    public void handleSingleColumnLineSparseBlock(Line line, SparseBlock currentSparseBlock){
+        //single column line
+        if (line.isSparse && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage && line.previous != null) {
+            currentSparseBlock.sparseBlockLines.add(line);
+            if (line.sparsePointCount > currentSparseBlock.mostSparseFields) {
+                currentSparseBlock.mostSparseFields = line.sparsePointCount;
+            }
+        } else if (line.isCritical && currentSparseBlock.sparseBlockLines.size() > 0 && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage) {
+            currentSparseBlock.sparseBlockLines.add(line);
+        } else if (line.isCritical && (line.next != null && line.next.isSparse && line.lineHeight == line.next.lineHeight) && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage) {
+            currentSparseBlock.sparseBlockLines.add(line);
+        } else {
             currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
         }
     }
@@ -336,7 +345,8 @@ public class TableDetection {
             add("\\u2013");
             add("\\u25CB");
             add("\\u006f");
-            add("\\u002d"); // -
+            add("\\u002d");
+            add("\\u25A0"); // -
         }};
         String unicode = word.lettersOfWord.get(0).unicode;
         if (bulletPointUnicodes.contains(unicode) && word.lettersOfWord.size() == 1) {
@@ -476,8 +486,8 @@ public class TableDetection {
     private boolean fullOverlapOfSparseAreas(Line firstLine, Line secondLine) {
 
         int count = 0;
-        for(WordGroup wordGroupFirstLine : firstLine.wordGroupsInLine){
-            if(wordGroupFirstLine.startX > secondLine.wordGroupsInLine.get(count).endX || wordGroupFirstLine.endX < secondLine.wordGroupsInLine.get(count).startX){
+        for (WordGroup wordGroupFirstLine : firstLine.wordGroupsInLine) {
+            if (wordGroupFirstLine.startX > secondLine.wordGroupsInLine.get(count).endX || wordGroupFirstLine.endX < secondLine.wordGroupsInLine.get(count).startX) {
                 return false;
             }
             count++;
@@ -522,12 +532,16 @@ public class TableDetection {
 
         for (Line line : table.tableBody.sparseBlockLines) {
             currentTable.tableBody.sparseBlockLines.add(line);
-            if (line.distanceToNextLine > medianDistanceToNextLine * 2 && table.tableBody.sparseBlockLines.indexOf(line) < table.tableBody.sparseBlockLines.size() - 3 && line.sparsePointCount != line.next.sparsePointCount
-                    || line.distanceToNextLine > medianDistanceToNextLine * 2.5 && line.sparsePointCount != line.next.sparsePointCount) { //value -3 defines the amount of lines that have to be behind a big line distance to avoid unnecessary splits
-                if (currentTable.tableBody.sparseBlockLines.size() > 1) {
-                    newTables.add(currentTable);
+            if (line.distanceToNextLine > medianDistanceToNextLine * 2 && table.tableBody.sparseBlockLines.indexOf(line) < table.tableBody.sparseBlockLines.size() - 3
+                    || line.distanceToNextLine > medianDistanceToNextLine * 2.5) { //value -3 defines the amount of lines that have to be behind a big line distance to avoid unnecessary splits
+                if (line.sparsePointCount < line.next.sparsePointCount - 2 || line.sparsePointCount > line.next.sparsePointCount + 2 || line.next.lineHeight != line.lineHeight) {
+
+                    if (currentTable.tableBody.sparseBlockLines.size() > 1) {
+                        newTables.add(currentTable);
+                    }
+                    currentTable = new Table();
                 }
-                currentTable = new Table();
+
             }
         }
         if (newTables.size() > 0 && currentTable.tableBody.sparseBlockLines.size() > 2 || (currentTable.tableBody.sparseBlockLines.size() > 1 && (currentTable.tableBody.sparseBlockLines.get(0).sparsePointCount == currentTable.tableBody.sparseBlockLines.get(0).sparsePointCount))) {
@@ -544,8 +558,8 @@ public class TableDetection {
         ArrayList<Line> linesToDelete = new ArrayList<>();
         Line currentLine = table.tableBody.sparseBlockLines.get(0);
 
-        System.out.println(currentLine.getLineString());
-        System.out.println(metaData.fileName);
+        //System.out.println(currentLine.getLineString());
+        //System.out.println(metaData.fileName);
         while ((currentLine.lineHeight > medianLineHeight * 1.3 || currentLine.distanceToNextLine > medianDistanceToNextLine * 3) && (currentLine.sparsePointCount != currentLine.next.sparsePointCount)) {
             linesToDelete.add(currentLine);
             currentLine = currentLine.next;

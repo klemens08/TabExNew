@@ -35,7 +35,6 @@ public class Line {
     List<WordGroup> wordGroupsInLeftColumn = new ArrayList<WordGroup>();
     List<WordGroup> wordGroupsInRightColumn = new ArrayList<WordGroup>();
 
-
     public Line() {
         this.upperBound = Float.POSITIVE_INFINITY;
         this.lowerBound = Float.NEGATIVE_INFINITY;
@@ -145,11 +144,11 @@ public class Line {
         }
 
         this.lineHeight = (this.lowerBound - this.upperBound);
-        setSparsePointCount(metaData.minimumSpaceGapThreshold);
+        setSparsePointCount(metaData.minimumSpaceGapThreshold, metaData);
         setWordGroupsInLine();
     }
 
-    public void setSparsePointCount(Float minimumSpaceGapThreshold) {
+    public void setSparsePointCount(Float minimumSpaceGapThreshold, MetaData metaData) {
         this.sparsePointCount = 0;
         this.isSparse = false;
         for (Word word : this.getWordsInLine()) {
@@ -162,9 +161,25 @@ public class Line {
                 word.isNextSparse = true;
             }
         }
+        this.setWordGroupsInLine();
         if (this.lastLineOfPage && this.sparsePointCount != this.previous.sparsePointCount) {
             this.isSparse = false;
         }
+
+        if (/*metaData.pages.size() != 1 && */ this.isSparse) {
+            int realSparse = 0;
+            for (WordGroup wordGroup : this.getWordGroupsInLine()) {
+                if (wordGroup.getDistanceToNextWordGroup() > (minimumSpaceGapThreshold * 2)) {
+                    realSparse++;
+                }
+            }
+            if (realSparse == 0 && !(this.wordsInLine.first().startX > (metaData.getPage(this.page).leftBound + ((metaData.getPage(this.page).rightBound) - metaData.getPage(this.page).leftBound) * 0.05))) {
+                this.isSparse = false;
+                //this.isSemiSparse = true;
+            }
+        }
+
+
     }
 
     public float getStartX() {
@@ -179,18 +194,18 @@ public class Line {
         return getEndX() - getStartX();
     }
 
-    public void setLineHeight(){
+    public void setLineHeight() {
         this.lineHeight = (this.lowerBound - this.upperBound);
     }
 
-    public void setDistanceToPreviousLine(){
-        if(this.previous != null){
+    public void setDistanceToPreviousLine() {
+        if (this.previous != null) {
             this.distanceToPreviousLine = (this.upperBound - this.previous.lowerBound);
         }
     }
 
-    public void setDistanceToNextLine(){
-        if(this.next != null){
+    public void setDistanceToNextLine() {
+        if (this.next != null) {
             this.distanceToPreviousLine = (this.next.upperBound - this.lowerBound);
         }
     }

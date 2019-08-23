@@ -66,7 +66,7 @@ public class TabExHandler {
         }
 
         evaluationHandler.createSummaryEvaluationLog();
-        printAllFilesMetaDataDetails(allFiles);
+        //printAllFilesMetaDataDetails(allFiles);
         return wasExportOkay;
     }
 
@@ -139,7 +139,7 @@ public class TabExHandler {
         //String fileName = listOfFiles[fileIndex].getName();
         fileName = fileName.replace("pdf", "xls");
 
-        printLineWithDetails(metaData);
+        //printLineWithDetails(metaData);
 
         boolean wasExportSuccessful = exportToExcel(metaData.tables, fileName);
 
@@ -233,7 +233,7 @@ public class TabExHandler {
         tableDetection.reviseSparseBlocks();
 
         //System.out.println("Current Threshhold = " + metaData.minimumSpaceGapThreshold);
-        printTables(metaData);
+        //printTables(metaData);
     }
 
     private void detectHeadersAndFooters(MetaData metaData) {
@@ -326,7 +326,7 @@ public class TabExHandler {
                 continue;
             }
 
-            Sheet sheet = workbook.createSheet("Tabelle" + (tableIndex + 1));
+            Sheet sheet = workbook.createSheet("Tabelle_" + (tableIndex + 1) + "_Page_" + table.pageNumber);
             int currentLine = 0;
             if (!table.getHeaderString().equals("")) {
                 Row headerRow = sheet.createRow(currentLine++);

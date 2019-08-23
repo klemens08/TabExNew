@@ -1,6 +1,8 @@
 package at.tugraz.tabex;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
@@ -61,10 +63,6 @@ public class Preprocessing extends PDFTextStripper {
             lastLine.lastLineOfPage = true;
 
             correctWrongWordPositionsInLine(linesOfPage);
-
-            for (Line line : linesOfPage) {
-                System.out.println(line.getLineString());
-            }
 
             setWordNextPreviousLast(linesOfPage);
 
@@ -178,6 +176,7 @@ public class Preprocessing extends PDFTextStripper {
 
             }
         }
+
 
         if (centerSparseLines.size() > (linesOfPage.size() * 0.6) && (fullLeftColumnLines > (centerSparseLines.size() * 0.3) /*&& fullRightColumnLines > (centerSparseLines.size() * 0.3)*/)) {
             page.startColumnBorder = leftColumnRightBoundary;
@@ -463,6 +462,15 @@ public class Preprocessing extends PDFTextStripper {
         this.metaData.pages.add(page);
         setStartPage(pageNumber + 1);
         setEndPage(pageNumber + 1);
+        PDPage pdPage = document.getPage(pageNumber);
+        PDRectangle mediaBox = pdPage.getMediaBox();
+        boolean isLandScape = mediaBox.getWidth() > mediaBox.getHeight();
+        int rotation = pdPage.getRotation();
+        if(rotation == 90 || rotation == 270){
+            isLandScape = !isLandScape;
+        }
+        page.isLandScape = isLandScape;
+
         Writer dummy = new OutputStreamWriter(new ByteArrayOutputStream());
         writeText(document, dummy);
     }
@@ -502,7 +510,8 @@ public class Preprocessing extends PDFTextStripper {
             //letter.height = text.getHeight();
             //letter.width = text.getWidthDirAdj();
             letter.width = text.getWidth();
-            letter.endX = text.getEndX();
+            //letter.endX = text.getEndX();
+            letter.endX = letter.x + letter.width;
             //letter.lowerBound = letter.upperBound + letter.getHeight();
             letter.unicode = "\\u" + Integer.toHexString(letter.letter | 0x10000).substring(1);
             letters.add(letter);
