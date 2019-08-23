@@ -29,6 +29,7 @@ public class Preprocessing extends PDFTextStripper {
         metaData.setMaxWidthOfLines();
         setDistanceToPreviousAndNextLine();
         metaData.setMedianYLineSpace();
+        metaData.setLineNumbers();
 
     }
 

@@ -148,19 +148,22 @@ public class TableDetection {
                 if (metaData.isMultiColumnPDF && line.isCenterSparse) {
 
                     //if normal sparse block was filled
-                    currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
+                    //currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
 
-                    if (line.leftColumnSparse && line.rightColumnSparse && !possibleSCTableInMCFile) {
+                    if ((line.leftColumnSparse || line.leftColumnCritical) && (line.rightColumnSparse || line.rightColumnCritical) && !possibleSCTableInMCFile) {
                         if (currentMCLeftSparseBlock.sparseBlockLines.size() == 0 && currentMCLeftSparseBlock.sparseBlockLines.size() == 0) {
                             possibleSCTableInMCFile = true;
                         }
                     } else if (possibleSCTableInMCFile && !(shouldAddLineToLeftBlock(line, currentMCLeftSparseBlock) && shouldAddLineToRightBlock(line, currentMCRightSparseBlock))) {
+                        currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
                         possibleSCTableInMCFile = false;
                     } else if (possibleSCTableInMCFile && !shouldAddLineToLeftBlock(line, currentMCLeftSparseBlock) && !shouldAddLineToRightBlock(line, currentMCRightSparseBlock)) {
                         //da beide spalten eine Tabelle ergeben wird die linke seite hinzugefügt und initialisiert im funktionsaufruf (ganze zeilen) und die rechte neu initialisiert
                         //da beide bläcke die gesamten zeilen der tabelle beinhalten reicht es einen block hinzuzufügen und zu zeigen das die gesamte zeile zu betrachten ist ("istLeftColumn = false")
-                        currentMCLeftSparseBlock.isLeftColumn = false;
-                        currentMCLeftSparseBlock = addSparseBlockToTable(currentMCLeftSparseBlock);
+                        //currentMCLeftSparseBlock.isLeftColumn = false;
+                        currentSparseBlock.sparseBlockLines.addAll(currentMCLeftSparseBlock.sparseBlockLines);
+                        //currentMCLeftSparseBlock = addSparseBlockToTable(currentMCLeftSparseBlock);
+                        currentMCLeftSparseBlock = new SparseBlock();
                         currentMCRightSparseBlock = new SparseBlock();
                         possibleSCTableInMCFile = false;
                         continue;
@@ -170,7 +173,8 @@ public class TableDetection {
                         if (line.sparsePointCount > currentMCLeftSparseBlock.mostSparseFields) {
                             currentMCLeftSparseBlock.mostSparseFields = line.sparsePointCount;
                         }
-                    } else if (line.leftColumnCritical && currentMCLeftSparseBlock.sparseBlockLines.size() > 0) {
+                    } else if (line.leftColumnCritical && currentMCLeftSparseBlock.sparseBlockLines.size() > 0 ||
+                            (line.leftColumnCritical && possibleSCTableInMCFile) || (line.wordGroupsInLeftColumn.size() == 0 && possibleSCTableInMCFile)) {
                         currentMCLeftSparseBlock.sparseBlockLines.add(line);
                     } else {
                         if (currentMCLeftSparseBlock.sparseBlockLines.size() > 0 && line.wordGroupsInLeftColumn.size() > 0) {
@@ -182,7 +186,8 @@ public class TableDetection {
                         if (line.sparsePointCount > currentMCRightSparseBlock.mostSparseFields) {
                             currentMCRightSparseBlock.mostSparseFields = line.sparsePointCount;
                         }
-                    } else if (line.rightColumnCritical && currentMCRightSparseBlock.sparseBlockLines.size() > 0) {
+                    } else if (line.rightColumnCritical && currentMCRightSparseBlock.sparseBlockLines.size() > 0 ||
+                            (line.rightColumnCritical && possibleSCTableInMCFile) || (line.wordGroupsInRightColumn.size() == 0 && possibleSCTableInMCFile)) {
                         currentMCRightSparseBlock.sparseBlockLines.add(line);
                     } else {
                         if (currentMCRightSparseBlock.sparseBlockLines.size() > 0 && line.wordGroupsInRightColumn.size() > 0) {
@@ -190,18 +195,18 @@ public class TableDetection {
                         }
                     }
                 } else {
-
                     //if left or right mc sparse block was filled
                     if (metaData.isMultiColumnPDF) {
                         if (!possibleSCTableInMCFile) {
                             currentMCLeftSparseBlock = addSparseBlockToTable(currentMCLeftSparseBlock);
                             currentMCRightSparseBlock = addSparseBlockToTable(currentMCRightSparseBlock);
-                        } else {
+                        } /*else {
                             currentMCLeftSparseBlock.isLeftColumn = false;
                             currentMCLeftSparseBlock = addSparseBlockToTable(currentMCLeftSparseBlock);
                             currentMCRightSparseBlock = new SparseBlock();
                         }
                         possibleSCTableInMCFile = false;
+                        */
                     }
                     //single column line
                     if (line.isSparse && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage && line.previous != null) {
@@ -214,6 +219,14 @@ public class TableDetection {
                     } else if (line.isCritical && (line.next != null && line.next.isSparse && line.lineHeight == line.next.lineHeight) && (!line.firstLineOfPage || line.firstLineOfPage && (line.next != null && (line.lineHeight == line.next.lineHeight))) && !line.lastLineOfPage) {
                         currentSparseBlock.sparseBlockLines.add(line);
                     } else {
+                        if(possibleSCTableInMCFile){
+                            currentSparseBlock.sparseBlockLines.addAll(0, currentMCLeftSparseBlock.sparseBlockLines);
+                            Collections.sort(currentSparseBlock.sparseBlockLines, (Line line1, Line line2) -> line1.lineNumber == line2.lineNumber ? 0 : (line1.lineNumber < line2.lineNumber ? -1 : 1));
+                            currentMCLeftSparseBlock = new SparseBlock();
+                            currentMCLeftSparseBlock.isLeftColumn = true;
+                            currentMCRightSparseBlock = new SparseBlock();
+                            currentMCRightSparseBlock.isRightColumn = true;
+                        }
                         currentSparseBlock = addSparseBlockToTable(currentSparseBlock);
                     }
                 }

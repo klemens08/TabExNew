@@ -23,9 +23,6 @@ public class MetaData {
     public String fileName = "";
 
 
-
-
-
     public float medianLineStartX;
     public float lineEndX;
     public float sparseLineStartX;
@@ -53,47 +50,57 @@ public class MetaData {
         return pages.stream().filter(page -> page.pageNumber == pageNumber).findAny().orElse(null);
     }
 
-    public void setMedianWidthOfLines(){
+    public void setMedianWidthOfLines() {
 
         ArrayList<Float> widthOfLines = new ArrayList<>();
 
-        for (Page page : pages){
-            for (Line line : page.linesOfPage){
+        for (Page page : pages) {
+            for (Line line : page.linesOfPage) {
                 float lineWidth = line.getEndX() - line.getStartX();
                 widthOfLines.add(lineWidth);
             }
         }
         Collections.sort(widthOfLines);
-        this.medianWidthOfLines = widthOfLines.get(widthOfLines.size()/2);
+        this.medianWidthOfLines = widthOfLines.get(widthOfLines.size() / 2);
     }
 
-    public void setMedianYLineSpace(){
+    public void setMedianYLineSpace() {
 
         ArrayList<Float> distancesBetweenLines = new ArrayList<>();
 
-        for (Page page : pages){
-            for (Line line : page.linesOfPage){
-                if(line.distanceToNextLine != 0.0f){
+        for (Page page : pages) {
+            for (Line line : page.linesOfPage) {
+                if (line.distanceToNextLine != 0.0f) {
                     distancesBetweenLines.add(line.distanceToNextLine);
                 }
             }
         }
         Collections.sort(distancesBetweenLines);
-        this.medianYLineSpace = distancesBetweenLines.get(distancesBetweenLines.size()/2);
+        this.medianYLineSpace = distancesBetweenLines.get(distancesBetweenLines.size() / 2);
     }
 
-    public void setMaxWidthOfLines(){
+    public void setMaxWidthOfLines() {
 
         Float maxWidth = 0.0f;
 
-        for (Page page : pages){
-            for (Line line : page.linesOfPage){
+        for (Page page : pages) {
+            for (Line line : page.linesOfPage) {
                 float lineWidth = line.getEndX() - line.getStartX();
-                if(lineWidth > maxWidth){
+                if (lineWidth > maxWidth) {
                     maxWidth = lineWidth;
                 }
             }
         }
         this.maxWidthOfLines = maxWidth;
+    }
+
+    public void setLineNumbers() {
+        for (Page page : this.pages) {
+            int lineNumber = 0;
+            for (Line line : page.linesOfPage) {
+                line.lineNumber = lineNumber;
+                lineNumber++;
+            }
+        }
     }
 }
